@@ -1,0 +1,578 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>Salco Fleet Sign-Out</title><meta name="color-scheme" content="light">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@600;700&display=swap">
+<style>
+/* Bright single-theme tool: white cards on a pale cool ground, hi-vis yellow for the main action, green and blue for in and out. List of unit rows, bottom sheets for forms. */
+:root{
+  --bg:#F4F6F9; --surface:#FFFFFF; --ink:#14181F; --muted:#566070; --line:#DDE2E9;
+  --hivis:#FFD60A; --hivis-line:#E0B800; --hivis-ink:#14181F;
+  --go:#15803D; --go-soft:#DCFCE7; --out:#1D4ED8; --out-soft:#DBEAFE;
+  --warn:#C2410C; --warn-soft:#FFEDD5; --bad:#DC2626; --bad-soft:#FEE2E2;
+  --display:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;
+  --body:"Barlow",system-ui,-apple-system,"Segoe UI",sans-serif;
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:17px;line-height:1.35;
+  padding-block:0;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--bg)}
+button,input,textarea{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--out);outline-offset:2px}
+.wrap{max-width:760px;margin:0 auto;padding-bottom:56px}
+h1,h2,h3,p{margin:0}
+h1,h2,h3{text-wrap:balance}
+
+/* masthead */
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);padding:14px 0 10px}
+.brand{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+.brand-k{font-family:var(--display);font-weight:700;font-size:16px;letter-spacing:.14em;text-transform:uppercase;background:var(--hivis);padding:1px 8px;border-radius:4px}
+.brand h1{font-family:var(--display);font-weight:700;font-size:32px;line-height:1.05;text-transform:uppercase;letter-spacing:.01em}
+.tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.tabs button{min-height:50px;border:2px solid var(--line);border-radius:12px;background:var(--surface);cursor:pointer;
+  font-family:var(--display);font-weight:700;font-size:20px;letter-spacing:.05em;text-transform:uppercase}
+.tabs button[aria-selected="true"]{background:var(--hivis);border-color:var(--hivis-line)}
+main{padding-top:6px}
+.banner{margin:4px 0 8px;padding:12px;border-radius:10px;background:var(--warn-soft);color:var(--warn);font-weight:500}
+
+/* buttons */
+.btn{min-height:52px;padding:0 18px;border:2px solid var(--line);border-radius:12px;background:var(--surface);cursor:pointer;font-weight:600;font-size:17px}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn.go{background:var(--go);border-color:var(--go);color:#fff}
+.btn.hv{background:var(--hivis);border-color:var(--hivis-line);color:var(--hivis-ink);font-weight:700}
+.btn.ghost{background:transparent;border-color:transparent;color:var(--muted)}
+.btn.small{min-height:40px;padding:0 12px;font-size:15px}
+.btn.danger{color:var(--bad);border-color:var(--bad)}
+.btn.danger.armed{background:var(--bad);color:#fff}
+.chip{display:inline-block;padding:3px 10px;border-radius:999px;font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap}
+.c-go{background:var(--go-soft);color:var(--go)}
+.c-out{background:var(--out-soft);color:var(--out)}
+.c-warn{background:var(--warn-soft);color:var(--warn)}
+.c-bad{background:var(--bad-soft);color:var(--bad)}
+.c-mute{background:var(--bg);color:var(--muted)}
+
+/* fleet */
+.sum{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
+.sum div{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:8px 12px;font-size:13px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.sum b{display:block;font-family:var(--display);font-size:34px;line-height:1;color:var(--ink);letter-spacing:0}
+.sum .s-out b{color:var(--out)}.sum .s-in b{color:var(--go)}.sum .s-due b{color:var(--warn)}
+.find{width:100%;min-height:52px;border:2px solid var(--line);border-radius:12px;background:var(--surface);padding:0 14px;font-size:17px}
+.seg{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 4px}
+.seg button{min-height:44px;padding:0 16px;border:2px solid var(--line);border-radius:999px;background:var(--surface);cursor:pointer;font-weight:600;font-size:15px}
+.seg button[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:#fff}
+.sec{font-family:var(--display);font-weight:700;font-size:22px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:18px 2px 8px}
+.rows{display:flex;flex-direction:column;gap:8px}
+.u{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px;display:flex;gap:12px;align-items:center;min-width:0}
+.u-no{font-family:var(--display);font-weight:700;font-size:30px;line-height:1;min-width:58px;max-width:92px;overflow-wrap:anywhere}
+.u-mid{flex:1;min-width:0}
+.u-desc{font-weight:600;overflow-wrap:anywhere}
+.u-st{font-size:15px;font-weight:600;overflow-wrap:anywhere}
+.u-st.in{color:var(--go)}.u-st.out{color:var(--out)}
+.u-flag{font-size:14px;font-weight:600;margin-top:2px;overflow-wrap:anywhere}
+.u-flag.due{color:var(--warn)}.u-flag.bad{color:var(--bad)}
+.u-act{display:flex;flex-direction:column;gap:2px;width:116px;flex:none}
+.empty{padding:32px 16px;text-align:center;color:var(--muted);display:flex;flex-direction:column;align-items:center;gap:12px;background:var(--surface);border:1px solid var(--line);border-radius:12px}
+.empty h3{font-family:var(--display);font-size:28px;text-transform:uppercase;color:var(--ink)}
+.empty p{max-width:40ch}
+
+/* inspections + log rows */
+.list{display:flex;flex-direction:column;gap:8px;margin-top:10px}
+.row{display:flex;align-items:center;gap:12px;padding:12px;background:var(--surface);border:1px solid var(--line);border-radius:12px;min-width:0}
+.row .no{font-family:var(--display);font-weight:700;font-size:28px;min-width:58px;max-width:92px;line-height:1;overflow-wrap:anywhere}
+.row .mid{flex:1;min-width:0}
+.row .t1{font-weight:600;overflow-wrap:anywhere}
+.row .t2{font-size:15px;color:var(--muted);overflow-wrap:anywhere}
+button.row{width:100%;text-align:left;cursor:pointer;font:inherit;color:inherit}
+.h-note{color:var(--muted);font-size:16px;margin:4px 2px 0}
+
+/* sheets */
+.scrim{position:fixed;inset:0;z-index:20;background:rgba(20,24,31,.45);display:flex;align-items:flex-end;justify-content:center;
+  padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) 0 env(safe-area-inset-left,0px)}
+.sheet{background:var(--surface);color:var(--ink);width:100%;max-width:600px;max-height:100%;border-radius:18px 18px 0 0;display:flex;flex-direction:column;overflow:hidden}
+.sheet.tall{height:100%}
+.sh{padding:16px;border-bottom:1px solid var(--line)}
+.sh-row{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.sh h2{font-family:var(--display);font-weight:700;font-size:28px;text-transform:uppercase;letter-spacing:.02em;line-height:1.1}
+.sub{color:var(--muted);font-size:15px;overflow-wrap:anywhere}
+.sb{padding:16px;overflow:auto;flex:1;min-height:0;display:flex;flex-direction:column;gap:16px}
+.sf{padding:12px 16px calc(12px + env(safe-area-inset-bottom,0px));border-top:1px solid var(--line);display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;background:var(--surface)}
+.sf .grow{flex:1 1 150px}
+@media (min-width:700px){
+  .scrim{align-items:center}
+  .sheet{border-radius:18px;max-height:92%}
+  .sheet.tall{height:92%}
+}
+.f{display:grid;gap:6px}
+.f>span{font-size:14px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.f>span i{font-style:normal;text-transform:none;letter-spacing:0;font-weight:400}
+.f input,.f textarea{min-height:52px;border:2px solid var(--line);border-radius:12px;background:var(--surface);padding:0 14px;font-size:17px;width:100%;min-width:0}
+.f textarea{padding:12px 14px;min-height:96px;resize:vertical}
+.typesel{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.typesel button{min-height:52px;border:2px solid var(--line);border-radius:12px;background:var(--surface);font-weight:700;font-size:17px;cursor:pointer}
+.typesel button[aria-pressed="true"]{background:var(--hivis);border-color:var(--hivis-line)}
+.note{padding:12px;border-radius:10px;font-size:15px;overflow-wrap:anywhere}
+.note.bad{background:var(--bad-soft);color:var(--bad)}
+.note.warn{background:var(--warn-soft);color:var(--warn)}
+.note.good{background:var(--go-soft);color:var(--go)}
+.err{color:var(--bad);font-weight:600;font-size:15px}
+
+/* inspection form */
+.prog{display:flex;align-items:center;gap:10px;margin-top:10px;font-size:14px;color:var(--muted);font-weight:600}
+.prog .track{flex:1;height:10px;border-radius:5px;background:var(--line);overflow:hidden}
+.prog .track i{display:block;height:100%;width:0;background:var(--go)}
+.prog span{white-space:nowrap;font-variant-numeric:tabular-nums}
+.grp h3{font-family:var(--display);font-weight:700;font-size:22px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:2px}
+.q{padding:12px 0;border-top:1px solid var(--line)}
+.q-l{margin-bottom:8px;font-weight:500}
+.q-b{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.q-b button{min-height:50px;border:2px solid var(--line);border-radius:12px;background:var(--surface);cursor:pointer;font-weight:700;font-size:16px}
+.q-b button[aria-pressed="true"][data-v="pass"]{background:var(--go);border-color:var(--go);color:#fff}
+.q-b button[aria-pressed="true"][data-v="fail"]{background:var(--bad);border-color:var(--bad);color:#fff}
+.q-b button[aria-pressed="true"][data-v="na"]{background:var(--muted);border-color:var(--muted);color:#fff}
+.q-n{margin-top:8px}
+.q-n input{min-height:50px;width:100%;border:2px solid var(--bad);border-radius:12px;background:var(--surface);padding:0 14px;font-size:17px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media (max-width:440px){.two{grid-template-columns:1fr}.u{flex-wrap:wrap}.u-act{width:100%;flex-direction:row}.u-act .btn{flex:1}}
+.det ul{list-style:none;margin:0;padding:0}
+.det li{display:flex;gap:8px;justify-content:space-between;align-items:center;padding:8px 0;border-top:1px solid var(--line);font-size:16px}
+.det .ln{overflow-wrap:anywhere}
+@media (prefers-reduced-motion:no-preference){.prog .track i{transition:width .2s}}
+
+.login{position:fixed;inset:0;z-index:50;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:16px}
+.lbox{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:24px;width:100%;max-width:400px;display:grid;gap:16px}
+</style>
+
+</head><body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand"><span class="brand-k">Salco</span><h1>Fleet Sign-Out</h1><button class="btn ghost small" id="signoutbtn" style="margin-left:auto" hidden>Sign out</button></div>
+    <nav class="tabs" role="tablist" aria-label="Sections">
+      <button role="tab" data-tab="fleet" aria-selected="true">Fleet</button>
+      <button role="tab" data-tab="insp" aria-selected="false">Inspect</button>
+      <button role="tab" data-tab="log" aria-selected="false">Log</button>
+    </nav>
+  </header>
+  <div id="banner" class="banner" hidden></div>
+  <main>
+    <section id="v-fleet">
+      <div class="sum" id="sum"></div>
+      <input class="find" id="find" type="search" placeholder="Search unit number or description" autocomplete="off" aria-label="Search units">
+      <div class="seg" id="filters" role="group" aria-label="Filter units"></div>
+      <div id="fleet"></div>
+      <div style="margin-top:16px" id="addwrap"><button class="btn small" id="add" data-act="add">+ Add unit</button></div>
+    </section>
+    <section id="v-insp" hidden>
+      <p class="h-note">Each unit needs an inspection every 7 days. Overdue units are at the top.</p>
+      <div class="list" id="insp"></div>
+    </section>
+    <section id="v-log" hidden>
+      <div class="seg" id="logseg" role="group" aria-label="Log type"></div>
+      <div class="list" id="log"></div>
+    </section>
+  </main>
+</div>
+
+<div id="login" class="login" hidden><form id="lform" class="lbox"><div class="brand"><span class="brand-k">Salco</span><h1>Fleet Sign-Out</h1></div><label class="f"><span>Email</span><input id="lemail" type="email" autocomplete="username" required></label><label class="f"><span>Password</span><input id="lpass" type="password" autocomplete="current-password" required></label><p class="err" id="lerr"></p><button class="btn hv" id="lgo" type="submit">Sign in</button></form></div>
+<datalist id="names"></datalist>
+<div class="scrim" id="scrim" hidden><div class="sheet" id="sheet" role="dialog" aria-modal="true"></div></div>
+
+<script>
+(function(){
+'use strict';
+var $=function(s,r){return (r||document).querySelector(s)};
+var esc=function(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})};
+var LS={get:function(k){try{return localStorage.getItem('fleet_'+k)}catch(e){return null}},set:function(k,v){try{localStorage.setItem('fleet_'+k,v)}catch(e){}}};
+
+var CHECKS={
+  Truck:[
+    ['Walk-around',[['tires','Tires: tread, pressure, no damage'],['lugs','Wheel nuts tight, no rust trails'],['body','Body, bumpers and glass: new damage'],['lights','Headlights, brake lights, signals, hazards'],['hitch','Hitch, ball and safety chain points']]],
+    ['Cab',[['wipers','Windshield, wipers and washer spray'],['mirrors','Mirrors and backup camera'],['horn','Horn and backup alarm'],['belts','Seat belts'],['gauges','Gauges and warning lights'],['brakes','Brakes and parking brake'],['steering','Steering: no play or pull']]],
+    ['Under the hood',[['oil','Engine oil level'],['coolant','Coolant level'],['fluids','Brake, washer and power steering fluid'],['leaks','No leaks, loose belts or hoses'],['battery','Battery and terminals']]],
+    ['Safety gear',[['ext','Fire extinguisher charged and in date'],['aid','First aid kit stocked'],['tri','Reflective triangles or flares'],['clean','Cab clean, load secured']]]
+  ],
+  Trailer:[
+    ['Trailer',[['tires','Tires: tread, pressure, no damage'],['lugs','Wheel nuts tight'],['coupler','Coupler and latch pin'],['chains','Safety chains and clips'],['breakaway','Breakaway cable and brakes'],['lights','Marker, brake and signal lights'],['plug','Wiring harness and plug'],['jack','Jack or landing gear'],['deck','Deck, ramps and tie-downs'],['refl','Reflectors and plate'],['body','Frame and fenders: new damage']]]
+  ]
+};
+
+var db=null, canWrite=true;
+var SUPABASE_URL='PASTE_PROJECT_URL_HERE';
+var SUPABASE_KEY='PASTE_ANON_KEY_HERE';
+var S={units:[],signouts:[],inspections:[],loaded:{u:false,s:false,i:false},tab:'fleet',filter:'all',logView:'out',q:''};
+
+/* dates */
+function pad(n){return String(n).padStart(2,'0')}
+function todayStr(){var d=new Date();return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())}
+function parseDay(s){var m=/^(\d{4})-(\d{2})-(\d{2})/.exec(s||'');return m?new Date(+m[1],+m[2]-1,+m[3]):null}
+function daysSince(s){var d=parseDay(s);if(!d)return null;return Math.round((parseDay(todayStr())-d)/864e5)}
+function fmtDay(s){var d=parseDay(s);return d?d.toLocaleDateString('en-US',{month:'short',day:'numeric'}):''}
+function fmtTime(iso){var d=new Date(iso);return isNaN(d)?'':d.toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})}
+function fmtClock(iso){var d=new Date(iso);return isNaN(d)?'':d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}
+function byNo(a,b){return String(a.unitNo||'').localeCompare(String(b.unitNo||''),undefined,{numeric:true,sensitivity:'base'})}
+
+function inspState(u){
+  var d=daysSince(u.lastInspection);
+  if(u.lastResult==='fail') return {k:'bad',text:'Defects: '+(u.lastDefects||'see log'),due:d==null||d>=7};
+  if(d==null) return {k:'due',text:'No inspection on record',due:true};
+  if(d>=7) return {k:'due',text:'Inspection due ('+d+' days)',due:true};
+  return {k:'ok',text:'Inspected '+(d===0?'today':d+(d===1?' day ago':' days ago')),due:false};
+}
+
+/* tabs */
+function setTab(t){
+  S.tab=t;
+  document.querySelectorAll('.tabs button').forEach(function(b){b.setAttribute('aria-selected',b.dataset.tab===t?'true':'false')});
+  $('#v-fleet').hidden=t!=='fleet';$('#v-insp').hidden=t!=='insp';$('#v-log').hidden=t!=='log';
+  render();
+}
+document.querySelector('.tabs').addEventListener('click',function(e){var b=e.target.closest('[data-tab]');if(b)setTab(b.dataset.tab)});
+
+function render(){
+  if(S.tab==='fleet')renderFleet();
+  else if(S.tab==='insp')renderInsp();
+  else renderLog();
+}
+
+function unitRow(u){
+  var out=u.status==='out', st=inspState(u);
+  var stat=out?'<div class="u-st out">Out · '+esc(u.driver)+(u.job?' · '+esc(u.job):'')+'<span style="font-weight:400;color:var(--muted)"> · '+esc(fmtTime(u.outAt))+'</span></div>':'<div class="u-st in">In</div>';
+  var flag=st.k==='bad'?'<div class="u-flag bad">'+esc(st.text)+'</div>':st.k==='due'?'<div class="u-flag due">'+esc(st.text)+'</div>':'';
+  var act='';
+  if(canWrite)act+=out?'<button class="btn go" data-act="signin">Sign in</button>':'<button class="btn hv" data-act="signout">Sign out</button>';
+  act+='<button class="btn ghost small" data-act="edit">'+(canWrite?'Edit':'Details')+'</button>';
+  return '<article class="u" data-id="'+esc(u.id)+'"><div class="u-no">'+esc(u.unitNo)+'</div><div class="u-mid"><div class="u-desc">'+esc(u.description||u.type)+'</div>'+stat+flag+'</div><div class="u-act">'+act+'</div></article>';
+}
+
+function renderFleet(){
+  var box=$('#fleet');
+  $('#addwrap').hidden=!canWrite;
+  if(!S.loaded.u){box.innerHTML='<div class="empty"><p>Loading fleet…</p></div>';$('#sum').innerHTML='';$('#filters').innerHTML='';return}
+  var all=S.units.slice();
+  var out=all.filter(function(u){return u.status==='out'}).length;
+  var due=all.filter(function(u){return inspState(u).due}).length;
+  $('#sum').innerHTML='<div class="s-out"><b>'+out+'</b>Out</div><div class="s-in"><b>'+(all.length-out)+'</b>In</div><div class="s-due"><b>'+due+'</b>Inspect due</div>';
+  var fs=[['all','All'],['Truck','Trucks'],['Trailer','Trailers'],['out','Out'],['due','Due']];
+  $('#filters').innerHTML=all.length?fs.map(function(f){return '<button data-f="'+f[0]+'" aria-pressed="'+(S.filter===f[0])+'">'+f[1]+'</button>'}).join(''):'';
+  $('#find').hidden=!all.length;
+  if(!all.length){
+    box.innerHTML='<div class="empty"><h3>No units yet</h3><p>Add each truck and trailer once. Sign-outs and weekly inspections show up here.</p>'+(canWrite?'<button class="btn hv" data-act="add">Add the first unit</button>':'')+'</div>';
+    return;
+  }
+  var q=S.q.trim().toLowerCase();
+  var list=all.filter(function(u){
+    if(S.filter==='Truck'&&u.type!=='Truck')return false;
+    if(S.filter==='Trailer'&&u.type!=='Trailer')return false;
+    if(S.filter==='out'&&u.status!=='out')return false;
+    if(S.filter==='due'&&!inspState(u).due)return false;
+    if(q&&(String(u.unitNo)+' '+String(u.description||'')).toLowerCase().indexOf(q)<0)return false;
+    return true;
+  }).sort(byNo);
+  if(!list.length){box.innerHTML='<div class="empty"><p>No units match.</p></div>';return}
+  var html='';
+  [['Truck','Trucks, vans and semis'],['Trailer','Trailers']].forEach(function(g){
+    var part=list.filter(function(u){return (u.type==='Trailer'?'Trailer':'Truck')===g[0]});
+    if(part.length)html+='<h2 class="sec">'+g[1]+' · '+part.length+'</h2><div class="rows">'+part.map(unitRow).join('')+'</div>';
+  });
+  box.innerHTML=html;
+}
+
+function renderInsp(){
+  var box=$('#insp');
+  if(!S.loaded.u){box.innerHTML='<div class="empty"><p>Loading…</p></div>';return}
+  var us=S.units.slice();
+  if(!us.length){box.innerHTML='<div class="empty"><h3>No units yet</h3><p>Add units on the Fleet tab, then run the weekly inspection from here.</p></div>';return}
+  us.sort(function(a,b){
+    var da=daysSince(a.lastInspection),dbb=daysSince(b.lastInspection);
+    var ka=a.lastResult==='fail'?1e6:(da==null?1e5:da), kb=b.lastResult==='fail'?1e6:(dbb==null?1e5:dbb);
+    return kb-ka||byNo(a,b);
+  });
+  box.innerHTML=us.map(function(u){
+    var st=inspState(u);
+    var chip=st.k==='bad'?'<span class="chip c-bad">Defects</span>':st.due?'<span class="chip c-warn">Due</span>':'<span class="chip c-go">Done</span>';
+    var sub=u.lastInspection?'Last inspected '+fmtDay(u.lastInspection):'Never inspected';
+    return '<div class="row" data-id="'+esc(u.id)+'"><div class="no">'+esc(u.unitNo)+'</div><div class="mid"><div class="t1">'+esc(u.description||u.type)+'</div><div class="t2">'+esc(sub)+'</div>'+chip+'</div>'+
+      (canWrite?'<button class="btn'+(st.due?' hv':'')+'" data-act="inspect">Inspect</button>':'')+'</div>';
+  }).join('');
+}
+
+function renderLog(){
+  var seg=[['out','Sign-outs'],['insp','Inspections']];
+  $('#logseg').innerHTML=seg.map(function(s){return '<button data-l="'+s[0]+'" aria-pressed="'+(S.logView===s[0])+'">'+s[1]+'</button>'}).join('');
+  var box=$('#log');
+  if(S.logView==='out'){
+    if(!S.loaded.s){box.innerHTML='<div class="empty"><p>Loading…</p></div>';return}
+    if(!S.signouts.length){box.innerHTML='<div class="empty"><h3>No sign-outs yet</h3><p>Each time a unit goes out it is logged here with the driver and times.</p></div>';return}
+    box.innerHTML=S.signouts.map(function(r){
+      var back=r.inAt?fmtTime(r.outAt)+' to '+(String(r.inAt).slice(0,10)===String(r.outAt).slice(0,10)?fmtClock(r.inAt):fmtTime(r.inAt)):fmtTime(r.outAt);
+      return '<div class="row"><div class="no">'+esc(r.unitNo)+'</div><div class="mid"><div class="t1">'+esc(r.driver)+(r.job?' · '+esc(r.job):'')+'</div><div class="t2">'+esc(back)+(r.inNote?' · '+esc(r.inNote):'')+'</div></div>'+
+        (r.inAt?'':'<span class="chip c-out">Still out</span>')+'</div>';
+    }).join('');
+  }else{
+    if(!S.loaded.i){box.innerHTML='<div class="empty"><p>Loading…</p></div>';return}
+    if(!S.inspections.length){box.innerHTML='<div class="empty"><h3>No inspections yet</h3><p>Saved weekly inspections appear here.</p></div>';return}
+    box.innerHTML=S.inspections.map(function(r){
+      return '<button class="row" data-insp="'+esc(r.id)+'"><div class="no">'+esc(r.unitNo)+'</div><div class="mid"><div class="t1">'+esc(fmtDay(r.day))+' · '+esc(r.inspector||'')+'</div><div class="t2">'+(r.fails?r.fails+(r.fails===1?' defect':' defects'):'No defects')+(r.odometer?' · '+Number(r.odometer).toLocaleString('en-US')+' km':'')+'</div></div>'+
+        '<span class="chip '+(r.fails?'c-bad':'c-go')+'">'+(r.fails?'Fail':'Pass')+'</span></button>';
+    }).join('');
+  }
+}
+
+/* sheet plumbing */
+var scrim=$('#scrim'), sheet=$('#sheet');
+function openSheet(html,cls){sheet.onclick=null;sheet.oninput=null;sheet.className='sheet '+(cls||'');sheet.innerHTML=html;scrim.hidden=false;document.body.style.overflow='hidden'}
+function closeSheet(){scrim.hidden=true;sheet.innerHTML='';sheet.onclick=null;sheet.oninput=null;document.body.style.overflow=''}
+scrim.addEventListener('click',function(e){if(e.target===scrim)closeSheet()});
+sheet.addEventListener('click',function(e){if(e.target.closest('[data-close]'))closeSheet()});
+document.addEventListener('keydown',function(e){if(e.key==='Escape'&&!scrim.hidden)closeSheet()});
+function showErr(m){var e=$('#err');if(e){e.textContent=m;e.hidden=false}}
+function run(fn){
+  var b=$('#go');if(b)b.disabled=true;
+  var e=$('#err');if(e)e.hidden=true;
+  return fn().catch(function(err){if(b)b.disabled=false;showErr(errText(err))});
+}
+function unitById(id){return S.units.find(function(u){return u.id===id})}
+function refreshNames(){
+  var set={};
+  [LS.get('inspector')].concat(S.signouts.map(function(r){return r.driver}),S.inspections.map(function(r){return r.inspector})).forEach(function(n){if(n)set[n]=1});
+  $('#names').innerHTML=Object.keys(set).sort().map(function(n){return '<option value="'+esc(n)+'">'}).join('');
+}
+
+/* sign out / in */
+function signOutSheet(u){
+  openSheet('<div class="sh"><h2>Sign out '+esc(u.unitNo)+'</h2><p class="sub">'+esc(u.description||u.type)+'</p></div>'+
+    '<div class="sb">'+(u.lastResult==='fail'?'<p class="note bad">Last inspection found defects: '+esc(u.lastDefects||'see log')+'</p>':'')+
+    (inspState(u).due&&u.lastResult!=='fail'?'<p class="note warn">Weekly inspection is due on this unit.</p>':'')+
+    '<label class="f"><span>Driver</span><input id="f-driver" list="names" autocomplete="off" placeholder="Name"></label>'+
+    '<label class="f"><span>Job or destination <i>(optional)</i></span><input id="f-job" autocomplete="off"></label>'+
+    '<p class="err" id="err" hidden></p></div>'+
+    '<div class="sf"><button class="btn" data-close>Cancel</button><button class="btn hv grow" id="go">Sign out</button></div>');
+  $('#f-driver').focus();
+  $('#go').onclick=function(){
+    var driver=$('#f-driver').value.trim(), job=$('#f-job').value.trim();
+    if(!driver){showErr('Enter the driver’s name.');return}
+    run(function(){
+      var ref=db.collection('fleet_signouts').doc(), at=new Date().toISOString();
+      return ref.set({unitId:u.id,unitNo:u.unitNo,type:u.type,driver:driver,job:job,outAt:at,inAt:null,inNote:''})
+        .then(function(){return db.doc('fleet_units/'+u.id).update({status:'out',driver:driver,job:job,outAt:at,logId:ref.id})})
+        .then(closeSheet);
+    });
+  };
+}
+function signInSheet(u){
+  openSheet('<div class="sh"><h2>Sign in '+esc(u.unitNo)+'</h2><p class="sub">'+esc(u.description||u.type)+'</p></div>'+
+    '<div class="sb"><p style="font-size:18px"><b>'+esc(u.driver)+'</b>'+(u.job?' · '+esc(u.job):'')+'<br><span class="sub">Out since '+esc(fmtTime(u.outAt))+'</span></p>'+
+    '<label class="f"><span>Notes <i>(optional: damage, issues, fuel)</i></span><textarea id="f-note"></textarea></label>'+
+    '<p class="err" id="err" hidden></p></div>'+
+    '<div class="sf"><button class="btn" data-close>Cancel</button><button class="btn go grow" id="go">Sign in</button></div>');
+  $('#go').onclick=function(){
+    var note=$('#f-note').value.trim(), at=new Date().toISOString();
+    run(function(){
+      var p=u.logId?db.doc('fleet_signouts/'+u.logId).update({inAt:at,inNote:note}).catch(function(){}):Promise.resolve();
+      return p.then(function(){return db.doc('fleet_units/'+u.id).update({status:'in',driver:'',job:'',outAt:null,logId:null})}).then(closeSheet);
+    });
+  };
+}
+
+/* add / edit unit */
+function unitSheet(u){
+  var isNew=!u, type=(u&&u.type)||'Truck', armed=false, dis=canWrite?'':' disabled';
+  openSheet('<div class="sh"><h2>'+(isNew?'Add unit':esc(u.unitNo))+'</h2></div>'+
+    '<div class="sb">'+
+    '<div class="f"><span>Type</span><div class="typesel"><button type="button" data-t="Truck" aria-pressed="'+(type==='Truck')+'"'+dis+'>Truck</button><button type="button" data-t="Trailer" aria-pressed="'+(type==='Trailer')+'"'+dis+'>Trailer</button></div></div>'+
+    '<label class="f"><span>Unit number</span><input id="f-no" autocomplete="off" placeholder="e.g. #12" value="'+esc(u?u.unitNo:'')+'"'+dis+'></label>'+
+    '<label class="f"><span>Description</span><input id="f-desc" autocomplete="off" placeholder="Year, make, model, colour" value="'+esc(u?u.description:'')+'"'+dis+'></label>'+
+    '<label class="f"><span>Last inspection <i>(optional)</i></span><input id="f-last" type="date" value="'+esc(u&&u.lastInspection||'')+'"'+dis+'></label>'+
+    '<p class="err" id="err" hidden></p></div>'+
+    '<div class="sf">'+(!isNew&&canWrite?'<button class="btn danger" id="rm" style="margin-right:auto">Remove unit</button>':'')+'<button class="btn" data-close>'+(canWrite?'Cancel':'Close')+'</button>'+(canWrite?'<button class="btn hv grow" id="go">Save</button>':'')+'</div>');
+  sheet.onclick=function(e){
+    var t=e.target.closest('[data-t]');
+    if(t){type=t.dataset.t;sheet.querySelectorAll('[data-t]').forEach(function(b){b.setAttribute('aria-pressed',String(b.dataset.t===type))})}
+  };
+  if(!canWrite)return;
+  $('#go').onclick=function(){
+    var no=$('#f-no').value.trim(), desc=$('#f-desc').value.trim(), last=$('#f-last').value;
+    if(!no){showErr('Enter a unit number.');return}
+    var dup=S.units.some(function(x){return x.id!==(u&&u.id)&&String(x.unitNo).toLowerCase()===no.toLowerCase()});
+    if(dup){showErr('That unit number is already in the fleet.');return}
+    run(function(){
+      if(isNew){
+        return db.collection('fleet_units').doc().set({type:type,unitNo:no,description:desc,lastInspection:last||'',lastResult:'',lastDefects:'',status:'in',driver:'',job:'',outAt:null,logId:null}).then(closeSheet);
+      }
+      return db.doc('fleet_units/'+u.id).update({type:type,unitNo:no,description:desc,lastInspection:last||''}).then(closeSheet);
+    });
+  };
+  var rm=$('#rm');
+  if(rm)rm.onclick=function(){
+    if(!armed){armed=true;rm.textContent='Tap again to remove';rm.classList.add('armed');return}
+    run(function(){return db.doc('fleet_units/'+u.id).delete().then(closeSheet)});
+  };
+}
+
+/* weekly inspection */
+function inspectSheet(u){
+  var groups=CHECKS[u.type]||CHECKS.Truck;
+  var flat=[];groups.forEach(function(g){g[1].forEach(function(it){flat.push(it)})});
+  var ans={}, notes={}, total=flat.length;
+  var qhtml=groups.map(function(g){
+    return '<div class="grp"><h3>'+esc(g[0])+'</h3>'+g[1].map(function(it){
+      return '<div class="q" data-k="'+it[0]+'"><div class="q-l">'+esc(it[1])+'</div><div class="q-b">'+
+        '<button type="button" data-v="pass" aria-pressed="false">Pass</button><button type="button" data-v="fail" aria-pressed="false">Fail</button><button type="button" data-v="na" aria-pressed="false">N/A</button></div>'+
+        '<div class="q-n" hidden><input data-n="'+it[0]+'" placeholder="What is wrong?" autocomplete="off"></div></div>';
+    }).join('')+'</div>';
+  }).join('');
+  openSheet('<div class="sh"><div class="sh-row"><div><h2>Inspect '+esc(u.unitNo)+'</h2><p class="sub">'+esc(u.description||u.type)+'</p></div><button class="btn ghost small" data-close>Close</button></div>'+
+    '<div class="prog"><div class="track"><i id="bar"></i></div><span id="cnt"></span></div></div>'+
+    '<div class="sb"><div class="two"><label class="f"><span>Inspector</span><input id="f-insp" list="names" autocomplete="off" placeholder="Name" value="'+esc(LS.get('inspector')||'')+'"></label>'+
+    (u.type==='Truck'?'<label class="f"><span>Odometer <i>(km)</i></span><input id="f-odo" type="number" inputmode="numeric" min="0"></label>':'<div></div>')+'</div>'+
+    qhtml+
+    '<label class="f"><span>Other notes <i>(optional)</i></span><textarea id="f-notes"></textarea></label><p class="err" id="err" hidden></p></div>'+
+    '<div class="sf"><button class="btn" id="allpass" type="button">Pass all remaining</button><button class="btn go grow" id="go" disabled>Save inspection</button></div>','tall');
+  function status(){
+    var n=Object.keys(ans).length, who=$('#f-insp').value.trim();
+    $('#bar').style.width=(n/total*100)+'%';
+    $('#cnt').textContent=n<total?n+' of '+total+' answered':(who?'Ready to save':'Add inspector name');
+    $('#go').disabled=!(n===total&&who);
+  }
+  function paint(q){
+    var k=q.dataset.k;
+    q.querySelectorAll('[data-v]').forEach(function(b){b.setAttribute('aria-pressed',String(ans[k]===b.dataset.v))});
+    $('.q-n',q).hidden=ans[k]!=='fail';
+  }
+  sheet.onclick=function(e){
+    var b=e.target.closest('[data-v]');
+    if(b){var q=b.closest('.q');ans[q.dataset.k]=b.dataset.v;paint(q);status();return}
+    if(e.target.closest('#allpass')){
+      sheet.querySelectorAll('.q').forEach(function(q){if(!ans[q.dataset.k]){ans[q.dataset.k]='pass';paint(q)}});
+      status();
+    }
+  };
+  sheet.oninput=function(e){
+    var n=e.target.dataset&&e.target.dataset.n;
+    if(n)notes[n]=e.target.value;
+    if(e.target.id==='f-insp')status();
+  };
+  status();
+  $('#go').onclick=function(){
+    var inspector=$('#f-insp').value.trim(), odoEl=$('#f-odo'), odo=odoEl&&odoEl.value?Number(odoEl.value):null;
+    LS.set('inspector',inspector);
+    var items=flat.map(function(it){return {k:it[0],label:it[1],r:ans[it[0]],note:(notes[it[0]]||'').trim()}});
+    var fails=items.filter(function(i){return i.r==='fail'});
+    var rec={unitId:u.id,unitNo:u.unitNo,type:u.type,at:new Date().toISOString(),day:todayStr(),inspector:inspector,odometer:odo,items:items,fails:fails.length,notes:$('#f-notes').value.trim()};
+    var patch={lastInspection:todayStr(),lastResult:fails.length?'fail':'pass',lastDefects:fails.map(function(i){return i.note?i.label+' ('+i.note+')':i.label}).join('; ')};
+    if(odo!=null)patch.odometer=odo;
+    run(function(){
+      return db.collection('fleet_inspections').doc().set(rec).then(function(){return db.doc('fleet_units/'+u.id).update(patch)}).then(closeSheet);
+    });
+  };
+}
+function inspDetailSheet(r){
+  var fails=(r.items||[]).filter(function(i){return i.r==='fail'});
+  var tag=function(v){return v==='pass'?'<span class="chip c-go">Pass</span>':v==='fail'?'<span class="chip c-bad">Fail</span>':'<span class="chip c-mute">N/A</span>'};
+  openSheet('<div class="sh"><div class="sh-row"><div><h2>'+esc(r.unitNo)+' · '+esc(fmtDay(r.day))+'</h2><p class="sub">'+esc(r.inspector||'')+(r.odometer?' · '+Number(r.odometer).toLocaleString('en-US')+' km':'')+'</p></div><button class="btn ghost small" data-close>Close</button></div></div>'+
+    '<div class="sb det">'+(fails.length?'<div class="note bad"><b>'+fails.length+(fails.length===1?' defect':' defects')+'</b><br>'+fails.map(function(i){return esc(i.label)+(i.note?': '+esc(i.note):'')}).join('<br>')+'</div>':'<p class="note good">No defects found.</p>')+
+    (r.notes?'<p>'+esc(r.notes)+'</p>':'')+
+    '<ul>'+(r.items||[]).map(function(i){return '<li><span class="ln">'+esc(i.label)+'</span>'+tag(i.r)+'</li>'}).join('')+'</ul></div>','tall');
+}
+
+/* events */
+$('#find').addEventListener('input',function(e){S.q=e.target.value;renderFleet()});
+document.addEventListener('click',function(e){
+  var f=e.target.closest('[data-f]');if(f){S.filter=f.dataset.f;renderFleet();return}
+  var l=e.target.closest('[data-l]');if(l){S.logView=l.dataset.l;renderLog();return}
+  var ins=e.target.closest('[data-insp]');
+  if(ins){var r=S.inspections.find(function(x){return x.id===ins.dataset.insp});if(r)inspDetailSheet(r);return}
+  var a=e.target.closest('[data-act]');if(!a||scrim.contains(a))return;
+  var act=a.dataset.act;
+  if(act==='add'){unitSheet(null);return}
+  var host=a.closest('[data-id]');var u=host&&unitById(host.dataset.id);if(!u)return;
+  if(act==='signout')signOutSheet(u);
+  else if(act==='signin')signInSheet(u);
+  else if(act==='inspect')inspectSheet(u);
+  else if(act==='edit')unitSheet(u);
+});
+
+/* start */
+function banner(msg){var b=$('#banner');b.textContent=msg;b.hidden=!msg}
+function onErr(e){banner(e&&e.code==='revoked'?'Access to this page changed. Reload to continue.':'Could not load saved data. Reload to try again.')}
+
+
+/* ---- Supabase data layer ---- */
+var sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+var listeners={fleet_units:[],fleet_signouts:[],fleet_inspections:[]};
+function chk(r){if(r&&r.error)throw r.error;return r}
+function newId(){return (window.crypto&&crypto.randomUUID)?crypto.randomUUID():(Date.now().toString(36)+Math.random().toString(36).slice(2))}
+function fetchCol(col){return sb.from(col).select('id,data').limit(3000).then(function(r){chk(r);return r.data.map(function(x){return {id:x.id,data:function(){return x.data||{}}}})})}
+function notify(col){listeners[col].forEach(function(l){l.run()})}
+function docRef(col,id){
+  return {id:id,
+    set:function(data){return sb.from(col).upsert({id:id,data:data}).then(chk).then(function(){notify(col)})},
+    update:function(patch){return sb.from(col).select('data').eq('id',id).maybeSingle().then(function(r){chk(r);var cur=(r.data&&r.data.data)||{};return sb.from(col).upsert({id:id,data:Object.assign({},cur,patch)})}).then(chk).then(function(){notify(col)})},
+    delete:function(){return sb.from(col).delete().eq('id',id).then(chk).then(function(){notify(col)})}
+  };
+}
+function query(col,ord,lim){
+  var q={
+    orderBy:function(f,d){return query(col,[f,d],lim)},
+    limit:function(n){return query(col,ord,n)},
+    onSnapshot:function(cb,err){
+      var l={run:function(){fetchCol(col).then(function(docs){
+        if(ord){var f=ord[0],dir=ord[1]==='desc'?-1:1;docs.sort(function(a,b){var x=a.data()[f]||'',y=b.data()[f]||'';return x<y?-dir:x>y?dir:0})}
+        if(lim)docs=docs.slice(0,lim);
+        cb({docs:docs,size:docs.length,empty:!docs.length});
+      }).catch(function(e){if(err)err(e)})}};
+      listeners[col].push(l);l.run();return function(){listeners[col]=listeners[col].filter(function(x){return x!==l})};
+    }
+  };
+  return q;
+}
+db={
+  collection:function(col){var q=query(col,null,null);q.doc=function(id){return docRef(col,id||newId())};return q},
+  doc:function(path){var p=path.split('/');return docRef(p[0],p[1])}
+};
+function errText(e){
+  var m=(e&&(e.message||e.code))||'';
+  if(/jwt|auth|401|403|permission|policy/i.test(m))return 'You are signed out. Reload the page and sign in again.';
+  return 'Could not save. Check your connection and try again.';
+}
+
+var started=false;
+function startData(){
+  if(started)return;started=true;canWrite=true;banner('');
+  db.collection('fleet_units').onSnapshot(function(snap){
+    S.units=snap.docs.map(function(d){return Object.assign({},d.data(),{id:d.id})});S.loaded.u=true;
+    if(S.tab!=='log')render();
+  },onErr);
+  db.collection('fleet_signouts').orderBy('outAt','desc').limit(300).onSnapshot(function(snap){
+    S.signouts=snap.docs.map(function(d){return Object.assign({},d.data(),{id:d.id})});S.loaded.s=true;refreshNames();if(S.tab==='log')renderLog();
+  },onErr);
+  db.collection('fleet_inspections').orderBy('at','desc').limit(300).onSnapshot(function(snap){
+    S.inspections=snap.docs.map(function(d){return Object.assign({},d.data(),{id:d.id})});S.loaded.i=true;refreshNames();if(S.tab==='log')renderLog();
+  },onErr);
+  ['fleet_units','fleet_signouts','fleet_inspections'].forEach(function(t){
+    sb.channel('rt-'+t).on('postgres_changes',{event:'*',schema:'public',table:t},function(){notify(t)}).subscribe();
+  });
+  setInterval(function(){['fleet_units','fleet_signouts','fleet_inspections'].forEach(notify)},30000);
+}
+function showLogin(msg){$('#login').hidden=false;$('#lerr').textContent=msg||'';$('#signoutbtn').hidden=true}
+function init(){
+  render();
+  if(/PASTE_/.test(SUPABASE_URL)||/PASTE_/.test(SUPABASE_KEY)){showLogin('Setup needed: add the Supabase URL and key at the top of index.html.');return}
+  sb.auth.getSession().then(function(r){
+    if(r.data&&r.data.session){$('#login').hidden=true;$('#signoutbtn').hidden=false;startData()}else showLogin('');
+  });
+  $('#lform').addEventListener('submit',function(e){
+    e.preventDefault();var b=$('#lgo');b.disabled=true;$('#lerr').textContent='';
+    sb.auth.signInWithPassword({email:$('#lemail').value.trim(),password:$('#lpass').value}).then(function(r){
+      b.disabled=false;
+      if(r.error){$('#lerr').textContent='Wrong email or password.';return}
+      $('#login').hidden=true;$('#signoutbtn').hidden=false;startData();
+    });
+  });
+  $('#signoutbtn').addEventListener('click',function(){sb.auth.signOut().then(function(){location.reload()})});
+}
+init();
+})();
+</script>
+
+</body></html>

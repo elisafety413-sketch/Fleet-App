@@ -1,7 +1,6 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>Salco Fleet Sign-Out</title><meta name="color-scheme" content="light">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@600;700&display=swap">
 <style>
 /* Bright single-theme tool: white cards on a pale cool ground, hi-vis yellow for the main action, green and blue for in and out. List of unit rows, bottom sheets for forms. */
@@ -143,8 +142,8 @@ button.row{width:100%;text-align:left;cursor:pointer;font:inherit;color:inherit}
 .login{position:fixed;inset:0;z-index:50;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:16px}
 .lbox{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:24px;width:100%;max-width:400px;display:grid;gap:16px}
 
-.u-no{display:flex;flex-direction:column;align-items:flex-start;gap:6px;max-width:96px}
-.u-ic{font-size:40px;line-height:1;display:block;filter:drop-shadow(0 0 .6px #14181F) drop-shadow(0 0 .6px #14181F) drop-shadow(0 1px 0 rgba(20,24,31,.25))}
+.u-no{display:flex;flex-direction:column;align-items:flex-start;gap:6px;max-width:112px}
+.u-ic{width:100px;height:auto;display:block;flex:none}
 .u-meta{font-size:13px;color:var(--muted);margin-top:2px;overflow-wrap:anywhere;letter-spacing:.02em}
 .u-meta b{font-weight:600;color:var(--ink)}
 .sub .u-meta{display:block}
@@ -220,7 +219,7 @@ function byNo(a,b){return String(a.unitNo||'').localeCompare(String(b.unitNo||''
 
 
 /* vehicle icons */
-var COLORS={black:'#2A2D33',white:'#FFFFFF',red:'#D62828',grey:'#8E949C',gray:'#8E949C',silver:'#C9CED6',blue:'#2563EB',yellow:'#F5C400',orange:'#F97316',green:'#15803D'};
+var COLORS={black:'#2A2D33',white:'#FFFFFF',red:'#D62828',grey:'#8E949C',gray:'#8E949C',silver:'#C9CED6',blue:'#2563EB',yellow:'#F5C400',orange:'#F97316',green:'#15803D',brown:'#7A4E2D'};
 function colorHex(c){return COLORS[String(c||'').trim().toLowerCase()]||'#C9CED6'}
 function kindOf(u){
   if(u.kind)return u.kind;
@@ -238,8 +237,110 @@ function kindOf(u){
   if(/transit|econoline|van/.test(d))return 'van';
   return 'pickup';
 }
-var FA={pickup:'fa-truck-pickup',van:'fa-van-shuttle',cubevan:'fa-truck',semi:'fa-truck-moving',flatbed:'fa-trailer',enclosed:'fa-trailer',enddump:'fa-trailer',lowboy:'fa-trailer',gooseneck:'fa-trailer',rolloff:'fa-dumpster'};
-function vehIcon(u){var k=kindOf(u);return '<i class="fa-solid '+(FA[k]||'fa-truck')+' u-ic" style="color:'+colorHex(u.color)+'" role="img" aria-label="'+esc(k)+'"></i>'}
+/* vehicle illustrations: side view, facing right, body fill = unit colour */
+var ICON_N=0;
+function vehSVG0(kind,color){
+  var W=[],id='vg'+(ICON_N++),O='#14181F',TIRE='#1B1E24',RIM='#D6DAE0',GLASS='#BFD6E8',CH='#A9B0BA',DK='#3A3F48';
+  var st=' stroke="'+O+'" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"';
+  function body(d,extra){return '<path d="'+d+'" fill="'+color+'"'+st+'/><path d="'+d+'" fill="url(#'+id+')" stroke="none"/>'+(extra||'')}
+  function glass(d){return '<path d="'+d+'" fill="'+GLASS+'" stroke="'+O+'" stroke-width="1.6" stroke-linejoin="round"/><path d="'+d+'" fill="#fff" opacity=".25" stroke="none"/>'}
+  function wheel(x,y,r){r=r||11;W.push('<circle cx="'+x+'" cy="'+y+'" r="'+(r+3)+'" fill="'+TIRE+'" opacity=".0"/><path d="M'+(x-r-3)+' '+y+'A'+(r+3)+' '+(r+3)+' 0 0 1 '+(x+r+3)+' '+y+'Z" fill="#0F1115" opacity=".9"/><circle cx="'+x+'" cy="'+y+'" r="'+r+'" fill="'+TIRE+'" stroke="'+O+'" stroke-width="1.5"/><circle cx="'+x+'" cy="'+y+'" r="'+(r*.58)+'" fill="'+RIM+'" stroke="#7B828C" stroke-width="1"/><circle cx="'+x+'" cy="'+y+'" r="'+(r*.22)+'" fill="#7B828C"/>');return ''}
+  function line(d,w,c,o){return '<path d="'+d+'" fill="none" stroke="'+(c||O)+'" stroke-width="'+(w||1.4)+'" stroke-linecap="round" opacity="'+(o==null?.5:o)+'"/>'}
+  function tube(d,w){return '<path d="'+d+'" fill="none" stroke="'+O+'" stroke-width="'+(w+3.4)+'" stroke-linecap="round" stroke-linejoin="round"/><path d="'+d+'" fill="none" stroke="'+color+'" stroke-width="'+w+'" stroke-linecap="round" stroke-linejoin="round"/><path d="'+d+'" fill="none" stroke="#fff" stroke-opacity=".25" stroke-width="'+(w*.35)+'" stroke-linecap="round" transform="translate(0,-'+(w*.2)+')"/>'}
+  var parts='';
+  if(kind==='pickup'){
+    parts=body('M6 57V35H62L66 19H96L113 35L146 38Q155 39 155 47V57Z')
+     +'<path d="M9 35H60V39H9Z" fill="#000" opacity=".28"/>'
+     +glass('M69 22H80V35H69Z')+glass('M83 22H94L106 35H83Z')
+     +line('M82 22V56',1.4)+line('M62 40V56',1.2,O,.35)
+     +'<rect x="76" y="40" width="5" height="2.4" rx="1" fill="'+CH+'" stroke="'+O+'" stroke-width=".8"/>'
+     +'<path d="M2 51H9V60H2Z" fill="'+CH+'"'+st+'/><path d="M148 52H158V60H146Z" fill="'+CH+'"'+st+'/>'
+     +'<path d="M150 40.5H155V45H150Z" fill="#FFF3B0" stroke="'+O+'" stroke-width="1"/><path d="M152 47V51" stroke="'+O+'" stroke-width="2"/>'
+     +wheel(34,58)+wheel(122,58);
+  }else if(kind==='van'){
+    parts=body('M6 57V30Q6 20 16 20H108L128 38L138 40Q146 41 146 48V57Z')
+     +glass('M111 24L124 37H111Z')+glass('M95 24H109V37H95Z')
+     +line('M94 22V56',1.4)+line('M40 40H90',1.4)+line('M40 24V56',1.2,O,.35)
+     +'<rect x="84" y="41" width="6" height="2.4" rx="1" fill="'+CH+'" stroke="'+O+'" stroke-width=".8"/>'
+     +'<path d="M2 51H9V60H2Z" fill="'+CH+'"'+st+'/><path d="M139 53H149V60H137Z" fill="'+CH+'"'+st+'/>'
+     +'<path d="M141 44H146V48H141Z" fill="#FFF3B0" stroke="'+O+'" stroke-width="1"/>'
+     +wheel(32,58)+wheel(112,58);
+  }else if(kind==='cubevan'){
+    parts=body('M6 57V8H92V57Z')
+     +line('M14 14V52M26 14V52M38 14V52M50 14V52M62 14V52M74 14V52M86 14V52',1.4,O,.18)
+     +line('M6 52H92',1.4,O,.3)
+     +body('M94 57V24H114L130 40L147 43Q155 44 155 51V57Z')
+     +glass('M98 28H112L125 40H98Z')+line('M98 28V56',1.4)
+     +'<path d="M2 51H9V60H2Z" fill="'+CH+'"'+st+'/><path d="M148 53H158V60H146Z" fill="'+CH+'"'+st+'/>'
+     +'<path d="M150 45H155V49H150Z" fill="#FFF3B0" stroke="'+O+'" stroke-width="1"/>'
+     +wheel(30,58)+wheel(124,58);
+  }else if(kind==='semi'){
+    parts='<rect x="57" y="4" width="5" height="46" rx="2" fill="'+CH+'"'+st+'/>'
+     +'<rect x="4" y="50" width="130" height="7" fill="'+DK+'"'+st+'/>'
+     +'<rect x="12" y="43" width="40" height="7" rx="2" fill="#555B66"'+st+'/>'
+     +'<rect x="68" y="42" width="30" height="12" rx="4" fill="'+CH+'"'+st+'/>'
+     +body('M64 52V14H97L101 30H109V36H127Q134 37 134 45V52Z')
+     +glass('M68 18H93L97 30H68Z')+line('M82 31V51',1.4)
+     +'<path d="M129 39H134V44H129Z" fill="#FFF3B0" stroke="'+O+'" stroke-width="1"/><path d="M116 37V52" stroke="'+O+'" stroke-width="1.4" opacity=".4"/>'
+     +'<path d="M125 52H137V60H125Z" fill="'+CH+'"'+st+'/>'
+     +wheel(24,58)+wheel(48,58)+wheel(108,58);
+  }else if(kind==='enclosed'){
+    parts='<path d="M138 46L158 52" '+st+' fill="none"/><path d="M128 52V62" '+st+' fill="none"/>'
+     +body('M6 54V18Q6 12 12 12H130Q138 12 138 18V54Z')
+     +line('M24 14V52M42 14V52M60 14V52M78 14V52M96 14V52M114 14V52',1.3,O,.16)
+     +'<path d="M6 46H138" stroke="'+O+'" stroke-width="1.4" opacity=".3"/><path d="M130 14V52" stroke="'+O+'" stroke-width="1.6" opacity=".45"/>'
+     +'<path d="M2 20H7V30H2Z" fill="#E03A3A" stroke="'+O+'" stroke-width="1"/>'
+     +wheel(64,58,10)+wheel(86,58,10);
+  }else if(kind==='flatbed'){
+    parts='<path d="M138 46L158 52" '+st+' fill="none"/><path d="M122 50V62" '+st+' fill="none"/>'
+     +body('M6 40H138V47H6Z')
+     +'<path d="M14 47V52M130 47V52" stroke="'+O+'" stroke-width="2"/><rect x="6" y="52" width="132" height="4" fill="'+DK+'"'+st+'/>'
+     +line('M30 40V47M54 40V47M78 40V47M102 40V47',1.2,'#fff',.35)
+     +'<path d="M48 40Q74 24 102 40Z" fill="'+color+'"'+st+'/><path d="M48 40Q74 24 102 40Z" fill="url(#'+id+')" stroke="none"/>'
+     +wheel(64,58,10)+wheel(86,58,10);
+  }else if(kind==='enddump'){
+    parts='<path d="M138 46L158 52" '+st+' fill="none"/>'
+     +body('M6 52V16H118L142 40V52Z')
+     +line('M22 18V50M38 18V50M54 18V50M70 18V50M86 18V50M102 18V50',1.3,O,.2)
+     +'<path d="M6 22H118" stroke="'+O+'" stroke-width="1.4" opacity=".3"/>'
+     +'<path d="M120 52L126 30" stroke="'+O+'" stroke-width="5" stroke-linecap="round"/><path d="M120 52L126 30" stroke="'+CH+'" stroke-width="2.6" stroke-linecap="round"/>'
+     +'<rect x="6" y="52" width="136" height="4" fill="'+DK+'"'+st+'/>'
+     +wheel(54,58,10)+wheel(76,58,10)+wheel(98,58,10);
+  }else if(kind==='lowboy'){
+    parts='<path d="M6 50L-2 58H6" fill="'+DK+'"'+st+'/>'
+     +body('M6 49H96V55H6Z')
+     +'<rect x="30" y="55" width="62" height="3" fill="'+DK+'"'+st+'/>'
+     +tube('M96 52L112 30H140',8)
+     +'<rect x="132" y="28" width="20" height="5" rx="2" fill="'+CH+'"'+st+'/><rect x="138" y="33" width="6" height="14" fill="'+CH+'"'+st+'/>'
+     +line('M104 41L116 41',1.2,'#fff',.5)
+     +wheel(40,60,8)+wheel(58,60,8)+wheel(76,60,8)+wheel(94,60,8);
+  }else if(kind==='gooseneck'){
+    parts='<path d="M6 41L-2 52H6" fill="'+DK+'"'+st+'/>'
+     +body('M6 40H104V46H6Z')
+     +'<rect x="6" y="46" width="98" height="4" fill="'+DK+'"'+st+'/>'
+     +line('M16 40V46M40 40V46M64 40V46M88 40V46',1.2,'#fff',.35)
+     +tube('M104 43C114 43 114 26 126 26H146',5)
+     +'<rect x="136" y="24" width="18" height="4" rx="2" fill="'+CH+'"'+st+'/><rect x="142" y="28" width="6" height="12" fill="'+CH+'"'+st+'/>'
+     +body('M8 40V14H88L102 28V40Z')
+     +line('M22 16V38M36 16V38M50 16V38M64 16V38M78 16V38',1.3,O,.2)
+     +'<path d="M8 22H94" stroke="'+O+'" stroke-width="1.4" opacity=".3"/>'
+     +'<path d="M92 40L96 26" stroke="'+O+'" stroke-width="5" stroke-linecap="round"/><path d="M92 40L96 26" stroke="'+CH+'" stroke-width="2.6" stroke-linecap="round"/>'
+     +wheel(30,57,10)+wheel(52,57,10)+wheel(74,57,10);
+  }else if(kind==='rolloff'){
+    parts='<path d="M140 50L158 54" '+st+' fill="none"/>'
+     +body('M12 20H116V44H12Z')
+     +line('M24 22V42M36 22V42M48 22V42M60 22V42M72 22V42M84 22V42M96 22V42M108 22V42',1.4,O,.22)
+     +'<path d="M12 26H116" stroke="'+O+'" stroke-width="1.4" opacity=".3"/>'
+     +'<rect x="6" y="44" width="134" height="7" fill="'+DK+'"'+st+'/><path d="M6 44L-2 54H6" fill="'+DK+'"'+st+'/>'
+     +wheel(70,58,10)+wheel(92,58,10);
+  }
+  var defs='<defs><linearGradient id="'+id+'" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".42"/><stop offset=".45" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".28"/></linearGradient></defs>';
+  var k={pickup:1.3,van:1.3,cubevan:1.12,semi:1.15,enclosed:1.15,flatbed:1.2,enddump:1.15,lowboy:1.2,gooseneck:1.1,rolloff:1.15}[kind]||1.15;
+  return '<svg class="u-ic" viewBox="-4 -8 166 84" role="img" aria-label="'+kind+'">'+defs+'<ellipse cx="80" cy="71" rx="70" ry="3.2" fill="#14181F" opacity=".14"/><g transform="translate(0,57) scale(1,'+k+') translate(0,-57)">'+parts+'</g>'+W.join('')+'</svg>';
+}
+
+function vehSVG(k,c){var t=vehSVG0(k,c);t=t.replace(/<path d="[^"]*" fill="url\(#[^"]*\)" stroke="none"\/>/g,'');return t.replace(/stroke-width="2"/g,'stroke-width="1"').replace(/stroke-width="1.6"/g,'stroke-width=".9"').replace(/#14181F/g,'#47505C')}
+function vehIcon(u){return vehSVG(kindOf(u),colorHex(u.color))}
 function vehLine(u){
   var parts=[];
   if(u.plate)parts.push('Plate <b>'+esc(u.plate)+'</b>');

@@ -1,6 +1,7 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>Salco Fleet Sign-Out</title><meta name="color-scheme" content="light">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@600;700&display=swap">
 <style>
 /* Bright single-theme tool: white cards on a pale cool ground, hi-vis yellow for the main action, green and blue for in and out. List of unit rows, bottom sheets for forms. */
@@ -143,7 +144,7 @@ button.row{width:100%;text-align:left;cursor:pointer;font:inherit;color:inherit}
 .lbox{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:24px;width:100%;max-width:400px;display:grid;gap:16px}
 
 .u-no{display:flex;flex-direction:column;align-items:flex-start;gap:6px;max-width:96px}
-.u-ic{width:84px;height:auto;display:block}
+.u-ic{font-size:40px;line-height:1;display:block;filter:drop-shadow(0 0 .6px #14181F) drop-shadow(0 0 .6px #14181F) drop-shadow(0 1px 0 rgba(20,24,31,.25))}
 .u-meta{font-size:13px;color:var(--muted);margin-top:2px;overflow-wrap:anywhere;letter-spacing:.02em}
 .u-meta b{font-weight:600;color:var(--ink)}
 .sub .u-meta{display:block}
@@ -237,21 +238,8 @@ function kindOf(u){
   if(/transit|econoline|van/.test(d))return 'van';
   return 'pickup';
 }
-function wheel(x,y,r){return '<circle cx="'+x+'" cy="'+y+'" r="'+r+'" fill="#2B2F36"/><circle cx="'+x+'" cy="'+y+'" r="'+(r*.42)+'" fill="#C9CED6"/>'}
-function vehIcon(u){
-  var c=colorHex(u.color),k=kindOf(u),S='stroke="#14181F" stroke-width="1.8" stroke-linejoin="round"',W='#DCEBF7',b='';
-  if(k==='pickup')b='<path d="M4 32V20H42V12H62L72 22H88Q92 22 92 26V32Z" fill="'+c+'" '+S+'/><path d="M46 15H60L67 22H46Z" fill="'+W+'" '+S+'/>'+wheel(24,34,7)+wheel(74,34,7);
-  else if(k==='van')b='<path d="M4 32V14Q4 10 8 10H62L80 22H90Q92 22 92 25V32Z" fill="'+c+'" '+S+'/><path d="M64 14L76 22H64Z" fill="'+W+'" '+S+'/>'+wheel(24,34,7)+wheel(74,34,7);
-  else if(k==='cubevan')b='<path d="M4 32V8H56V32Z" fill="'+c+'" '+S+'/><path d="M58 32V16H72L82 24H90Q92 24 92 27V32Z" fill="'+c+'" '+S+'/><path d="M62 19H71L77 24H62Z" fill="'+W+'" '+S+'/>'+wheel(22,34,7)+wheel(74,34,7);
-  else if(k==='semi')b='<rect x="4" y="29" width="88" height="5" fill="#555B66" '+S+'/><path d="M50 29V12H70L80 22H92V29Z" fill="'+c+'" '+S+'/><path d="M54 15H68L75 22H54Z" fill="'+W+'" '+S+'/>'+wheel(16,38,7)+wheel(34,38,7)+wheel(76,38,7);
-  else if(k==='enclosed')b='<rect x="8" y="10" width="84" height="20" rx="3" fill="'+c+'" '+S+'/><path d="M6 30L-1 34" '+S+'/>'+wheel(62,36,7)+wheel(78,36,7);
-  else if(k==='enddump')b='<path d="M8 30V16L84 8L92 30Z" fill="'+c+'" '+S+'/><path d="M30 30L50 22" '+S+'/>'+wheel(64,36,7)+wheel(80,36,7);
-  else if(k==='lowboy')b='<path d="M6 30V14H24V24H92V30Z" fill="'+c+'" '+S+'/>'+wheel(62,36,6)+wheel(74,36,6)+wheel(86,36,6);
-  else if(k==='gooseneck')b='<path d="M6 30V14H22V25H92V30Z" fill="'+c+'" '+S+'/>'+wheel(66,36,7)+wheel(82,36,7);
-  else if(k==='rolloff')b='<rect x="6" y="26" width="86" height="5" fill="#555B66" '+S+'/><path d="M10 26V12H90V26Z" fill="'+c+'" '+S+'/><path d="M30 12V26M50 12V26M70 12V26" '+S+'/>'+wheel(66,36,6)+wheel(80,36,6);
-  else b='<path d="M-1 26L6 26" '+S+'/><rect x="6" y="24" width="86" height="6" fill="'+c+'" '+S+'/>'+wheel(66,36,7)+wheel(82,36,7);
-  return '<svg class="u-ic" viewBox="-2 4 98 42" role="img" aria-label="'+esc(k)+'">'+b+'</svg>';
-}
+var FA={pickup:'fa-truck-pickup',van:'fa-van-shuttle',cubevan:'fa-truck',semi:'fa-truck-moving',flatbed:'fa-trailer',enclosed:'fa-trailer',enddump:'fa-trailer',lowboy:'fa-trailer',gooseneck:'fa-trailer',rolloff:'fa-dumpster'};
+function vehIcon(u){var k=kindOf(u);return '<i class="fa-solid '+(FA[k]||'fa-truck')+' u-ic" style="color:'+colorHex(u.color)+'" role="img" aria-label="'+esc(k)+'"></i>'}
 function vehLine(u){
   var parts=[];
   if(u.plate)parts.push('Plate <b>'+esc(u.plate)+'</b>');
